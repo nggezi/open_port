@@ -1,68 +1,63 @@
 #!/bin/sh
 
-# === 自动获取 LAN IP (通常是 192.168.1.1) ===
-# 脚本会自动尝试获取当前路由器的 LAN IP 作为默认转发目标
-DEFAULT_TARGET=$(uci get network.lan.ipaddr)
-
-# 需要操作的端口列表
+# 自动获取当前路由器的 LAN IP (通常是 192.168.1.1)
+# 这样无论在哪个路由器跑，都会转发给自己
+LAN_IP=$(uci get network.lan.ipaddr)
 PORTS="7681 7766 7676"
 
 show_menu() {
-    echo "--------------------------------"
-    echo "  OpenWrt 端口转发一键工具"
-    echo "  目标 IP: $DEFAULT_TARGET"
-    echo "  操作端口: $PORTS"
-    echo "--------------------------------"
-    echo " 1) 一键开启转发"
-    echo " 2) 一键关闭转发"
+    echo "=============================="
+    echo "   OpenWrt 端口一键开关工具"
+    echo "   目标 IP: $LAN_IP"
+    echo "=============================="
+    echo " 1) 开启转发 (外部=内部)"
+    echo " 2) 关闭并清理规则"
     echo " q) 退出"
-    echo "--------------------------------"
-    printf "请输入选项 [1-2/q]: "
+    echo "------------------------------"
+    printf "请选择 [1-2/q]: "
 }
 
 do_open() {
-    echo "🚀 正在配置规则..."
+    echo "正在添加规则..."
     for port in $PORTS; do
-        rule_id="multi_port_$port"
-        # 先清理旧规则
-        uci delete firewall.$rule_id 2>/dev/null
+        rule_name="autofwd_$port"
+        # 先尝试删除旧的，防止重复
+        uci delete firewall.$rule_name 2>/dev/null
         
-        # 写入新规则
-        uci set firewall.$rule_id=redirect
-        uci set firewall.$rule_id.name="Forward_$port"
-        uci set firewall.$rule_id.src='wan'
-        uci set firewall.$rule_id.dest='lan'
-        uci set firewall.$rule_id.proto='tcp udp'
-        uci set firewall.$rule_id.src_dport="$port"
-        uci set firewall.$rule_id.dest_ip="$DEFAULT_TARGET"
-        uci set firewall.$rule_id.dest_port="$port"
-        uci set firewall.$rule_id.target='DNAT'
+        uci set firewall.$rule_name=redirect
+        uci set firewall.$rule_name.name="AutoForward_$port"
+        uci set firewall.$rule_name.src='wan'
+        uci set firewall.$rule_name.dest='lan'
+        uci set firewall.$rule_name.proto='tcp udp'
+        uci set firewall.$rule_name.src_dport="$port"   # 外部访问端口
+        uci set firewall.$rule_name.dest_ip="$LAN_IP"   # 转发给谁
+        uci set firewall.$rule_name.dest_port="$port"  # 内部实际端口
+        uci set firewall.$rule_name.target='DNAT'
     done
     uci commit firewall
     /etc/init.d/firewall restart
-    echo "✅ 转发已开启！"
+    echo "✅ 端口 $PORTS 已全部开启！"
 }
 
 do_close() {
-    echo "🛑 正在清理规则..."
+    echo "正在删除规则..."
     for port in $PORTS; do
-        rule_id="multi_port_$port"
-        uci delete firewall.$rule_id 2>/dev/null
+        uci delete firewall."autofwd_$port" 2>/dev/null
     done
     uci commit firewall
     /etc/init.d/firewall restart
-    echo "❌ 转发已关闭！"
+    echo "❌ 规则已清理完毕。"
 }
 
-# 循环显示菜单
+# 循环逻辑
 while true; do
     show_menu
     read choice
-    case $choice in
+    case "$choice" in
         1) do_open ;;
         2) do_close ;;
         q|Q) exit 0 ;;
-        *) echo "无效输入，请重新选择" ;;
+        *) echo "无效选项，请重试。" ;;
     esac
     echo ""
 done
