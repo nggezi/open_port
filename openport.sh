@@ -40,14 +40,6 @@ show_menu() {
     printf '  %b请输入选项 [1/2/q]: %b' "$BOLD" "$RESET"
 }
 
-check_result() {
-    if [ $? -eq 0 ]; then
-        printf '%b\n' "${GREEN}  ✓ 操作成功${RESET}"
-    else
-        printf '%b\n' "${RED}  ✗ 操作失败${RESET}"
-    fi
-}
-
 do_open() {
     printf '\n'
     for port in $PORTS; do
@@ -63,9 +55,12 @@ do_open() {
         uci set firewall.$rule_id.dest_port="$port"
         uci set firewall.$rule_id.target='DNAT'
     done
-    uci commit firewall
-    /etc/init.d/firewall restart >/dev/null 2>&1
-    check_result
+    if uci commit firewall; then
+        /etc/init.d/firewall restart >/dev/null 2>&1
+        printf '%b\n' "${GREEN}  ✓ 转发已开启${RESET}"
+    else
+        printf '%b\n' "${RED}  ✗ 操作失败${RESET}"
+    fi
 }
 
 do_close() {
@@ -74,9 +69,12 @@ do_close() {
         rule_id="fwd_rule_$port"
         uci delete firewall.$rule_id 2>/dev/null
     done
-    uci commit firewall
-    /etc/init.d/firewall restart >/dev/null 2>&1
-    check_result
+    if uci commit firewall; then
+        /etc/init.d/firewall restart >/dev/null 2>&1
+        printf '%b\n' "${YELLOW}  ✓ 转发已关闭${RESET}"
+    else
+        printf '%b\n' "${RED}  ✗ 操作失败${RESET}"
+    fi
 }
 
 if [ -n "$1" ]; then
