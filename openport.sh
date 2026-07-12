@@ -4,12 +4,12 @@ LAN_IP=$(uci get network.lan.ipaddr | sed 's/\/.*//')
 [ -z "$LAN_IP" ] && LAN_IP="192.168.1.1"
 PORTS="7681 7766 7676"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-RESET='\033[0m'
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+CYAN=$'\033[0;36m'
+BOLD=$'\033[1m'
+RESET=$'\033[0m'
 
 rollback() {
     for port in $PORTS; do
@@ -45,10 +45,10 @@ do_open() {
         uci set firewall.fwd_rule_$port.dest_port="$port"
         uci set firewall.fwd_rule_$port.target='DNAT'
     done
-    uci commit firewall || { rollback; echo "${RED}✗ 写入失败${RESET}"; return 1; }
+    uci commit firewall || { rollback; printf "${RED}✗ 写入失败${RESET}\n"; return 1; }
     /etc/init.d/firewall reload &
     spinner $!
-    echo "${GREEN}✓ 转发已开启${RESET}"
+    printf "${GREEN}✓ 转发已开启${RESET}\n"
 }
 
 do_close() {
@@ -59,32 +59,31 @@ do_close() {
     uci commit firewall
     /etc/init.d/firewall reload &
     spinner $!
-    echo "${YELLOW}✓ 转发已关闭${RESET}"
+    printf "${YELLOW}✓ 转发已关闭${RESET}\n"
 }
 
 show_banner() {
     clear
-    echo "${CYAN}"
-    echo "  ╔══════════════════════════════════════╗"
-    echo "  ║${RESET}     ${BOLD}OpenWrt 端口转发一键工具${RESET}      ${CYAN}║"
-    echo "  ║${RESET}         Open Port Forwader         ${CYAN}║"
-    echo "  ╚══════════════════════════════════════╝"
-    echo "${RESET}"
+    printf '\033[0;36m  ╔══════════════════════════════════════╗\n'
+    printf '\033[0m  ║     \033[1mOpenWrt 端口转发一键工具\033[0m      \033[0;36m║\n'
+    printf '\033[0m  ║         Open Port Forwader         \033[0;36m║\n'
+    printf '\033[0m  ╚══════════════════════════════════════╝\n'
+    printf '\033[0m\n'
 }
 
 show_menu() {
     show_banner
-    echo "  ${BOLD}目标设置${RESET}"
-    echo "  ┌──────────────────────────────────────┐"
+    printf "  ${BOLD}目标设置${RESET}\n"
+    printf "  ┌──────────────────────────────────────┐\n"
     printf "  │ ${CYAN}IP:${RESET}   %-30s │\n" "$LAN_IP"
     printf "  │ ${CYAN}端口:${RESET} %-30s │\n" "$PORTS"
-    echo "  └──────────────────────────────────────┘"
+    printf "  └──────────────────────────────────────┘\n"
     echo ""
-    echo "  ${BOLD}操作选项${RESET}"
-    echo "  ┌──────────────────────────────────────┐"
-    echo "  │  ${GREEN}[1]${RESET}  🚀 一键开启转发                  │"
-    echo "  │  ${YELLOW}[2]${RESET}  🛑 一键关闭转发                  │"
-    echo "  └──────────────────────────────────────┘"
+    printf "  ${BOLD}操作选项${RESET}\n"
+    printf "  ┌──────────────────────────────────────┐\n"
+    printf "  │  ${GREEN}[1]${RESET}  🚀 一键开启转发                  │\n"
+    printf "  │  ${YELLOW}[2]${RESET}  🛑 一键关闭转发                  │\n"
+    printf "  └──────────────────────────────────────┘\n"
     echo ""
     printf "  ${BOLD}请输入选项 [1/2]:${RESET} "
 }
@@ -93,7 +92,7 @@ if [ -n "$1" ]; then
     case "$1" in
         open)  do_open ;;
         close) do_close ;;
-        *)     echo "用法: $0 {open|close}" ;;
+        *)     printf "用法: $0 {open|close}\n" ;;
     esac
 else
     while true; do
@@ -103,8 +102,8 @@ else
         case "$choice" in
             1) do_open ;;
             2) do_close ;;
-            q|Q) echo "${CYAN}再见！${RESET}"; break ;;
-            *) [ -n "$choice" ] && echo "${RED}⚠ 无效选项: $choice${RESET}" ;;
+            q|Q) printf "${CYAN}再见！${RESET}\n"; break ;;
+            *) [ -n "$choice" ] && printf "${RED}⚠ 无效选项: $choice${RESET}" ;;
         esac
         printf "\n  按回车继续..."
         read -r < /dev/tty
