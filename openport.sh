@@ -20,15 +20,14 @@ rollback() {
 
 spinner() {
     pid=$1
-    delay=1
     spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     while kill -0 $pid 2>/dev/null; do
         for char in $spin; do
-            printf "\r${CYAN}[%s]${RESET} 处理中..." "$char"
-            sleep $delay
+            printf "\r${CYAN}%s${RESET}" "$char"
+            sleep 1
         done
     done
-    printf "\r${GREEN}[✓]${RESET} 完成！\n"
+    printf "\r${GREEN}✓${RESET}  \n"
 }
 
 do_open() {
