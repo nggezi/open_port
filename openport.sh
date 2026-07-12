@@ -55,12 +55,12 @@ do_open() {
         uci set firewall.$rule_id.dest_port="$port"
         uci set firewall.$rule_id.target='DNAT'
     done
-    if uci commit firewall; then
-        /etc/init.d/firewall restart >/dev/null 2>&1
-        printf '%b\n' "${GREEN}  ✓ 转发已开启${RESET}"
-    else
-        printf '%b\n' "${RED}  ✗ 操作失败${RESET}"
-    fi
+    uci commit firewall || {
+        printf '%b\n' "${RED}  ✗ 写入失败${RESET}"
+        return 1
+    }
+    /etc/init.d/firewall restart >/dev/null 2>&1
+    printf '%b\n' "${GREEN}  ✓ 转发已开启${RESET}"
 }
 
 do_close() {
