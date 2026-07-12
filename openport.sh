@@ -1,34 +1,58 @@
 #!/bin/sh
 
-# 1. 核心修复：提取纯 IP，剔除 /24 等掩码
-# 使用 sed 过滤掉斜杠及其后面的内容
 LAN_IP=$(uci get network.lan.ipaddr | sed 's/\/.*//')
+[ -z "$LAN_IP" ] && LAN_IP="192.168.1.1"
 PORTS="7681 7766 7676"
 
-# 如果获取不到 IP，给一个保底值
-[ -z "$LAN_IP" ] && LAN_IP="192.168.1.1"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+
+CLEAR='\033[H\033[2J'
+BOLD='\033[1m'
+
+show_banner() {
+    printf '%b' "$CLEAR"
+    printf '%b\n' "${CYAN}  ╔════════════════════════════════════════╗"
+    printf '%b\n' "${CYAN}  ║${RESET}    ${BOLD}OpenWrt 端口转发管理${RESET}          ${CYAN}║"
+    printf '%b\n' "${CYAN}  ║${RESET}        Port Forward Manager         ${CYAN}║"
+    printf '%b\n' "${CYAN}  ╚════════════════════════════════════════╝${RESET}"
+    printf '\n'
+}
 
 show_menu() {
-    echo "--------------------------------"
-    echo "  OpenWrt 端口转发一键工具"
-    echo "  当前目标 IP: $LAN_IP"
-    echo "  操作端口: $PORTS"
-    echo "--------------------------------"
-    echo " 1) 🚀 一键开启转发"
-    echo " 2) 🛑 一键关闭转发"
-    echo " q) 退出"
-    echo "--------------------------------"
-    printf "请输入选项 [1, 2, q]: "
+    show_banner
+    printf '  %b目标设置%b\n' "$BOLD" "$RESET"
+    printf '  ┌────────────────────────────────────────┐\n'
+    printf '  │ %b%-10s%b %-29s │\n' "$CYAN" "IP:" "$RESET" "$LAN_IP"
+    printf '  │ %b%-10s%b %-29s │\n' "$CYAN" "端口:" "$RESET" "$PORTS"
+    printf '  └────────────────────────────────────────┘\n'
+    printf '\n'
+    printf '  %b操作选项%b\n' "$BOLD" "$RESET"
+    printf '  ┌────────────────────────────────────────┐\n'
+    printf '  │  %b[1]%b  开启转发                          │\n' "$GREEN" "$RESET"
+    printf '  │  %b[2]%b  关闭转发                          │\n' "$YELLOW" "$RESET"
+    printf '  │  %b[q]%b  退出                              │\n' "$CYAN" "$RESET"
+    printf '  └────────────────────────────────────────┘\n'
+    printf '\n'
+    printf '  %b请输入选项 [1/2/q]: %b' "$BOLD" "$RESET"
+}
+
+check_result() {
+    if [ $? -eq 0 ]; then
+        printf '%b\n' "${GREEN}  ✓ 操作成功${RESET}"
+    else
+        printf '%b\n' "${RED}  ✗ 操作失败${RESET}"
+    fi
 }
 
 do_open() {
-    echo "正在写入防火墙规则..."
+    printf '\n'
     for port in $PORTS; do
         rule_id="fwd_rule_$port"
-        # 先清理同名规则
         uci delete firewall.$rule_id 2>/dev/null
-
-        # 建立新规则
         uci set firewall.$rule_id=redirect
         uci set firewall.$rule_id.name="Auto_Forward_$port"
         uci set firewall.$rule_id.src='wan'
@@ -40,44 +64,39 @@ do_open() {
         uci set firewall.$rule_id.target='DNAT'
     done
     uci commit firewall
-    /etc/init.d/firewall restart
-    echo "✅ 转发已开启！外网现在可以访问了。"
+    /etc/init.d/firewall restart >/dev/null 2>&1
+    check_result
 }
 
 do_close() {
-    echo "正在清理规则..."
+    printf '\n'
     for port in $PORTS; do
         rule_id="fwd_rule_$port"
         uci delete firewall.$rule_id 2>/dev/null
     done
     uci commit firewall
-    /etc/init.d/firewall restart
-    echo "❌ 转发已关闭。"
+    /etc/init.d/firewall restart >/dev/null 2>&1
+    check_result
 }
 
-# 循环显示菜单
-while true; do
-    show_menu
-    # 修复：增加判断，防止在某些终端下 read 自动跳过
-    read -r choice < /dev/tty
-
-    case "$choice" in
-        1)
-            do_open
-            ;;
-        2)
-            do_close
-            ;;
-        q|Q)
-            echo "退出脚本。"
-            break
-            ;;
-        *)
-            # 只有在确实有输入时才报错，防止刷屏
-            if [ -n "$choice" ]; then
-                echo "⚠️ 无效选项: $choice"
-            fi
-            ;;
+if [ -n "$1" ]; then
+    case "$1" in
+        open)  do_open ;;
+        close) do_close ;;
+        *)     printf '用法: %s {open|close}\n' "$0" ;;
     esac
-    echo ""
-done
+else
+    while true; do
+        show_menu
+        read -r choice < /dev/tty
+        printf '\n'
+        case "$choice" in
+            1) do_open ;;
+            2) do_close ;;
+            q|Q) printf '%b\n' "${CYAN}  再见！${RESET}"; break ;;
+            *) [ -n "$choice" ] && printf '%b %s\n' "${RED}  ⚠ 无效选项${RESET}" "$choice" ;;
+        esac
+        printf '\n  %b按回车继续...%b' "$BOLD" "$RESET"
+        read -r < /dev/tty
+    done
+fi

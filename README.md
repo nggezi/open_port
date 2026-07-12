@@ -1,26 +1,53 @@
 # Open Port
 
-OpenWrt 端口转发一键工具
+OpenWrt 端口转发管理工具
+
+## 界面预览
+
+```
+  ╔════════════════════════════════════════╗
+  ║    OpenWrt 端口转发管理          ║
+  ║        Port Forward Manager         ║
+  ╚════════════════════════════════════════╝
+
+  目标设置
+  ┌────────────────────────────────────────┐
+  │ IP:       192.168.1.1                  │
+  │ 端口:     7681 7766 7676               │
+  └────────────────────────────────────────┘
+
+  操作选项
+  ┌────────────────────────────────────────┐
+  │  [1]  开启转发                          │
+  │  [2]  关闭转发                          │
+  │  [q]  退出                              │
+  └────────────────────────────────────────┘
+
+  请输入选项 [1/2/q]:
+```
 
 ## 功能
 
 - 自动获取路由器 LAN IP（支持 `/24` 等掩码格式）
 - 一键开启/关闭多个端口的 WAN→LAN 端口转发
 - 支持 TCP/UDP 协议
-- 操作失败自动回滚
+- 美观的交互界面
 
 ## 使用方法
 
 ### 交互模式
 
 ```sh
-sh /root/openport.sh
+wget -qO- https://raw.githubusercontent.com/nggezi/open_port/main/openport.sh | sh
 ```
 
-### wget 一键模式
+### 命令行模式
 
 ```sh
+# 开启转发
 wget -qO- https://raw.githubusercontent.com/nggezi/open_port/main/openport.sh | sh -s open
+
+# 关闭转发
 wget -qO- https://raw.githubusercontent.com/nggezi/open_port/main/openport.sh | sh -s close
 ```
 
@@ -33,14 +60,6 @@ wget -qO- https://raw.githubusercontent.com/nggezi/open_port/main/openport.sh | 
 ```sh
 PORTS="7681 7766 7676"
 ```
-
-## 菜单说明
-
-| 选项 | 功能 |
-|------|------|
-| 1 | 开启转发（从 WAN 到 LAN 的 DNAT） |
-| 2 | 关闭转发（删除规则） |
-| q | 退出 |
 
 ## 安全提示
 
