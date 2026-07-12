@@ -20,7 +20,7 @@ rollback() {
 
 spinner() {
     pid=$1
-    delay=0.1
+    delay=1
     spin='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
     while kill -0 $pid 2>/dev/null; do
         for char in $spin; do
